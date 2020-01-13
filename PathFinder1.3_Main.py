@@ -152,16 +152,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, widthInit=width, heightInit=height):
         super().__init__()
 
-        self.destination = "PathFinder1.2_Data.json"
+        self.destination = "PathFinder1.3_Data.json"
         self.clickPointArray = None
         self.dataDict = {}
         self.btnHeight = 50  # standard button Height
         self.btnWidth = 75  # standard button Width
         self.pixmap = QPixmap(
-            '2020-field.jpg'
+            'PathFinder1.3_2020-field.jpg'
         )  # image (and image path)
-        realWidth = 15.98  # m # 16.46
-        realHeight = 8.21  # m # 8.23
+        realWidth = 22.71889  # m # 16.46
+        realHeight = 9.533818  # m # 8.23
         self.PointNum = 5  # number of points whose values are calculated in the bezier curves
         self.last_x, self.last_y, self.ctrl_x, self.ctrl_y = None, None, None, None
         self.clickArr = []
@@ -194,6 +194,12 @@ class MainWindow(QtWidgets.QMainWindow):
         drawPath.resize(self.btnWidth, self.btnHeight - 25)
         drawPath.move(225, heightInit)
         drawPath.clicked.connect(self.DrawPath)
+
+        delPnt = QPushButton('delete point', self.label1)  # a button to delete points
+        delPnt.setStyleSheet("background-color: green")
+        delPnt.resize(self.btnWidth, self.btnHeight)
+        delPnt.move(300, heightInit)
+        delPnt.clicked.connect(self.DeletePoint)
 
         self.PathNameText = QLineEdit(self.label1)
         self.PathNameText.resize(150, 25)
@@ -261,7 +267,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.clickArr = [[e.x(), e.y()]]
 
-            painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
+            # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
+
+            for i in range(1, len(self.clickPointArray)):
+                painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                 self.clickPointArray[i][0], self.clickPointArray[i][1])
 
         elif e.button() == QtCore.Qt.RightButton:  # right click draws beziers
             center = QPoint(e.x(), e.y())
@@ -272,6 +282,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.clickArr.append([e.x(), e.y()])
             self.bezierPoints = Bezier(self.clickArr)
             painter.drawEllipse(center, 2, 2)
+
+        print(self.clickArr)
 
         painter.end()
         self.update()
@@ -300,25 +312,64 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def SavePath(self):
         self.dataDict[self.PathNameText.text()] = self.clickPointArray.copy()
+
+        try:
+            with open(self.destination, "r") as json_data:
+                dictData = json.load(json_data)
+        except:
+            dictData = {self.PathNameText.text(): self.clickPointArray.copy()}
+
+        print(dictData)
+
+        dictData[self.PathNameText.text()] = self.clickPointArray.copy()
+
         with open(self.destination, 'w') as json_data:
-            json.dump(self.dataDict, json_data)
+            json.dump(dictData, json_data)
 
     def DrawPath(self):
         with open(self.destination, 'r') as json_data:
             dictData = json.load(json_data)
-        print(dictData[self.PathNameText.text()])
-        print(dictData)
-        print(self.PathNameText.text())
-        #  self.label2.setPixmap(self.pixmap)
-        painter = QtGui.QPainter(self.label2.pixmap())
+
+        self.label2.setPixmap(self.pixmap)
+        self.draw_grid()
+
+        painter2 = QtGui.QPainter(self.label2.pixmap())
         pen2 = QtGui.QPen()
         pen2.setColor(QtGui.QColor(175, 175, 175))
-        pen2.setWidth(2)
-        painter.setPen(pen2)
+        pen2.setWidth(5)
+        pen2.setColor(QtGui.QColor('orange'))
+        painter2.setPen(pen2)
+
         for i in range(1, len(dictData[self.PathNameText.text()])):
-            print(dictData[self.PathNameText.text()][i][0], dictData[self.PathNameText.text()][i][1])
-            #painter.drawLine(self.PathNameText.text()[i - 1][0], dictData[self.PathNameText.text()][i - 1][1], dictData[self.PathNameText.text()][i][0], dictData[self.PathNameText.text()][i][1])
-        painter.drawLine(50,50,100,100)
+            painter2.drawLine(dictData[self.PathNameText.text()][i - 1][0],
+                              dictData[self.PathNameText.text()][i - 1][1],
+                              dictData[self.PathNameText.text()][i][0], dictData[self.PathNameText.text()][i][1])
+        painter2.end()
+        self.update()
+        self.clickPointArray = dictData[self.PathNameText.text()].copy()  # change path array to new path array
+        self.last_x, self.last_y = dictData[self.PathNameText.text()][-1][0], dictData[self.PathNameText.text()][-1][1]
+
+    def DeletePoint(self):
+
+        self.label2.setPixmap(self.pixmap)
+        self.draw_grid()
+
+        painter2 = QtGui.QPainter(self.label2.pixmap())
+        pen2 = QtGui.QPen()
+        pen2.setColor(QtGui.QColor(175, 175, 175))
+        pen2.setWidth(5)
+        pen2.setColor(QtGui.QColor('orange'))
+        painter2.setPen(pen2)
+        self.clickPointArray = self.clickPointArray[:-1]  # change path array to new path array
+
+        for i in range(1, len(self.clickPointArray)):
+            painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                              self.clickPointArray[i][0], self.clickPointArray[i][1])
+            print(self.clickPointArray[i][0], self.clickPointArray[i][0])
+        painter2.end()
+        self.update()
+        self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
+
 
 app = QtWidgets.QApplication(sys.argv)
 window = MainWindow()
