@@ -162,7 +162,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )  # image (and image path)
         realWidth = 22.71889  # m # 16.46
         realHeight = 9.533818  # m # 8.23
-        self.PointNum = 5  # number of points whose values are calculated in the bezier curves
+        self.PointNum = 20  # number of points whose values are calculated in the bezier curves
         self.last_x, self.last_y, self.ctrl_x, self.ctrl_y = None, None, None, None
         self.clickArr = []
         self.bezierPoints = []
