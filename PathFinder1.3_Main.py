@@ -310,6 +310,7 @@ class MainWindow(QtWidgets.QMainWindow):
             print(line)
         print("\n")
 
+
     def SavePath(self):
         self.dataDict[self.PathNameText.text()] = self.clickPointArray.copy()
 
