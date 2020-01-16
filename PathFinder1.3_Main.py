@@ -79,12 +79,12 @@ def sortPointsIntoPathInfo(pointArr, ratios):  # fix later
     angle = 0
 
     pointArr = [[np.round(i[0] / ratios[0], 2), np.round(i[1] / ratios[1], 2), i[2]] for i in pointArr]
-
+    
     for j in range(1, len(pointArr)):
         angle = np.round(
             (atan2((points[j][1] - points[j - 1][1]), (points[j][0] - points[j - 1][0]))) * (180 / np.pi), 2)
         if not pointArr[j][2]:  # if point is reverse (I don't know why it is False if pressed)
-            angle = np.round(180 - angle, 2)  # angleArr[j - 1] --> lastAngle
+            angle = -np.round(180 - angle, 2)  # angleArr[j - 1] --> lastAngle
             if abs(angle) > 180:
                 angle = np.round(angle % 180,2)
         angleArr.append(angle)
