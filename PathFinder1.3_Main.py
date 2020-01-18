@@ -7,12 +7,14 @@
 import numpy as np
 from math import atan2
 import sys
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5.QtCore import Qt, QSize, QPoint
-from PyQt5.QtWidgets import QPushButton, QCheckBox, QInputDialog, QLineEdit, QWidget
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtWidgets import QPushButton, QCheckBox, QLineEdit
 from PyQt5.QtGui import QPixmap, QPainterPath
-from scipy.special import binom
+import scipy.special
 import json
+
+from scipy.special.cython_special import binom
 
 
 def Bernstein(n, k):
@@ -79,14 +81,15 @@ def sortPointsIntoPathInfo(pointArr, ratios):  # fix later
     angle = 0
 
     pointArr = [[np.round(i[0] / ratios[0], 2), np.round(i[1] / ratios[1], 2), i[2]] for i in pointArr]
-    
+
     for j in range(1, len(pointArr)):
-        angle = np.round(
-            (atan2((points[j][1] - points[j - 1][1]), (points[j][0] - points[j - 1][0]))) * (180 / np.pi), 2)
+        angle = np.round(atan2((pointArr[j][1] - pointArr[j - 1][1]), (pointArr[j][0] - pointArr[j - 1][0]))) * (
+                180 / np.pi)
         if not pointArr[j][2]:  # if point is reverse (I don't know why it is False if pressed)
-            angle = -np.round(180 - angle, 2)  # angleArr[j - 1] --> lastAngle
+            lastAngle = angleArr[j - 1]
+            angle = np.round(2 * lastAngle - 180 - angle, 2)  # angleArr[j - 1] --> lastAngle
             if abs(angle) > 180:
-                angle = np.round(angle % 180,2)
+                angle = np.round(-180 + (angle % 180))
         angleArr.append(angle)
 
     for i in range(len(angleArr)):
@@ -161,13 +164,14 @@ class MainWindow(QtWidgets.QMainWindow):
         )  # image (and image path)
         realWidth = 22.71889  # m # 16.46
         realHeight = 9.533818  # m # 8.23
-        self.PointNum = 20  # number of points whose values are calculated in the bezier curves
+        self.PointNum = 5  # number of points whose values are calculated in the bezier curves
         self.last_x, self.last_y, self.ctrl_x, self.ctrl_y = None, None, None, None
         self.clickArr = []
         self.bezierPoints = []
         self.bPP = []  # bezier Points Print
         self.bSC = 5  # bezier Segment Count
-        colorArr = ["purple", "blue", "green", "red", "cyan", "magenta", "yellow", "black", "white"]
+        self.colorArr = ["purple", "blue", "green", "red", "cyan", "magenta", "yellow", "black", "white"]
+        self.colornum = 0
 
         self.widthRatio = widthInit / realWidth
         self.heightRatio = heightInit / realHeight
@@ -204,10 +208,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.PathNameText.resize(150, 25)
         self.PathNameText.move(150, heightInit + 25)
 
-        self.reverse = QCheckBox('reverse', self.label1)
+        self.reverse = QCheckBox('reverse', self.label1) # reverse button
         self.reverse.setStyleSheet("background-color: magenta")
         self.reverse.resize(self.btnWidth, self.btnHeight)
         self.reverse.move(75, heightInit)
+
+        self.nextPathB = QPushButton('next path', self.label1) # next path button
+        self.nextPathB.setStyleSheet("background-color: yellow")
+        self.nextPathB.resize(self.btnWidth, self.btnHeight)
+        self.nextPathB.move(375, heightInit)
+        self.nextPathB.clicked.connect(self.NewPath)
 
         canvas = QtGui.QPixmap(widthInit, heightInit + 50)
         canvas.fill(Qt.white)
@@ -224,7 +234,7 @@ class MainWindow(QtWidgets.QMainWindow):
         linesH = int(width_grid / IntervalY)
         painter = QtGui.QPainter(self.label2.pixmap())
         pen = QtGui.QPen()
-        pen.setColor(QtGui.QColor(175, 175, 175))
+        pen.setColor(QtGui.QColor("gray"))
         pen.setWidth(2)
         painter.setPen(pen)
         painter.drawLines(QtCore.QLineF(0, y * IntervalY, width_grid, y * IntervalY) for y in range(linesV * 2))
@@ -238,7 +248,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.clickPointArray = points
         pen = QtGui.QPen()
         path = QPainterPath()
-        pen.setColor(QtGui.QColor('purple'))
+        pen.setColor(QtGui.QColor(self.colorArr[self.colornum]))
         pen.setWidth(5)
         painter = QtGui.QPainter(self.label2.pixmap())
         painter.setPen(pen)
@@ -260,29 +270,26 @@ class MainWindow(QtWidgets.QMainWindow):
                 bPP = Bezier(self.clickArr, self.PointNum)
                 bPP = [[i[0], i[1]] for i in bPP]
                 for i in range(len(bPP[1::])):
-                    self.clickPointArray.append([bPP[i + 1][0], bPP[i + 1][1], b])  # doesn't work for 1st point of
+                    self.clickPointArray.append([bPP[i + 1][0], bPP[i + 1][1], b, self.colornum])  # doesn't work for 1st point of
                     # bezier, reason Unknown
-            self.clickPointArray.append([e.x(), e.y(), b])
+            self.clickPointArray.append([e.x(), e.y(), b, self.colornum])
 
             self.clickArr = [[e.x(), e.y()]]
 
             # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
-
             for i in range(1, len(self.clickPointArray)):
+                pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                painter.setPen(pen)
                 painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
                                  self.clickPointArray[i][0], self.clickPointArray[i][1])
 
         elif e.button() == QtCore.Qt.RightButton:  # right click draws beziers
             center = QPoint(e.x(), e.y())
-            pen.setColor(QtGui.QColor('purple'))
-            painter.setPen(pen)
             if len(self.clickArr) < 1:
                 self.clickPointArray.append([e.x(), e.y(), b])
             self.clickArr.append([e.x(), e.y()])
             self.bezierPoints = Bezier(self.clickArr)
             painter.drawEllipse(center, 2, 2)
-
-        print(self.clickArr)
 
         painter.end()
         self.update()
@@ -308,7 +315,6 @@ class MainWindow(QtWidgets.QMainWindow):
         for line in lines[1:]:
             print(line)
         print("\n")
-
 
     def SavePath(self):
         self.dataDict[self.PathNameText.text()] = self.clickPointArray.copy()
@@ -348,6 +354,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update()
         self.clickPointArray = dictData[self.PathNameText.text()].copy()  # change path array to new path array
         self.last_x, self.last_y = dictData[self.PathNameText.text()][-1][0], dictData[self.PathNameText.text()][-1][1]
+
+    def NewPath(self):
+        self.colornum += 1
 
     def DeletePoint(self):
 
