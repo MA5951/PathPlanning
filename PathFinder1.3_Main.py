@@ -208,12 +208,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.PathNameText.resize(150, 25)
         self.PathNameText.move(150, heightInit + 25)
 
-        self.reverse = QCheckBox('reverse', self.label1) # reverse button
+        self.reverse = QCheckBox('reverse', self.label1)  # reverse button
         self.reverse.setStyleSheet("background-color: magenta")
         self.reverse.resize(self.btnWidth, self.btnHeight)
         self.reverse.move(75, heightInit)
 
-        self.nextPathB = QPushButton('next path', self.label1) # next path button
+        self.nextPathB = QPushButton('next path', self.label1)  # next path button
         self.nextPathB.setStyleSheet("background-color: yellow")
         self.nextPathB.resize(self.btnWidth, self.btnHeight)
         self.nextPathB.move(375, heightInit)
@@ -253,24 +253,27 @@ class MainWindow(QtWidgets.QMainWindow):
         painter = QtGui.QPainter(self.label2.pixmap())
         painter.setPen(pen)
 
-        if e.button() == QtCore.Qt.LeftButton:  # left button draws regular lines
+        if e.button() == QtCore.Qt.RightButton or self.clickPointArray is None:  # right click draws beziers
+            center = QPoint(e.x(), e.y())
+            if len(self.clickArr) < 1:
+                self.clickPointArray.append([e.x(), e.y(), b])
+            self.clickArr.append([e.x(), e.y()])
+            self.bezierPoints = Bezier(self.clickArr)
+            painter.drawEllipse(center, 2, 2)
+
+        elif e.button() == QtCore.Qt.LeftButton:  # left button draws regular lines
             if self.last_x is None:  # First event.
                 painter.drawEllipse(e.x(), e.y(), 2, 2)
                 self.last_x = e.x()
                 self.last_y = e.y()
-
-            # code that draws bezier after you are done setting up all of the points
-            for i in range(1, int(self.bezierPoints.size / 2)):
-                painter.drawEllipse(self.bezierPoints[i][0], self.bezierPoints[i][1], 2, 2)
-                painter.drawLine(self.bezierPoints[i - 1][0], self.bezierPoints[i - 1][1], self.bezierPoints[i][0],
-                                 self.bezierPoints[i][1])
 
             # add point coordinates to coordinate array
             if len(self.clickArr) > 1:
                 bPP = Bezier(self.clickArr, self.PointNum)
                 bPP = [[i[0], i[1]] for i in bPP]
                 for i in range(len(bPP[1::])):
-                    self.clickPointArray.append([bPP[i + 1][0], bPP[i + 1][1], b, self.colornum])  # doesn't work for 1st point of
+                    self.clickPointArray.append(
+                        [bPP[i + 1][0], bPP[i + 1][1], b, self.colornum])  # doesn't work for 1st point of
                     # bezier, reason Unknown
             self.clickPointArray.append([e.x(), e.y(), b, self.colornum])
 
@@ -282,14 +285,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 painter.setPen(pen)
                 painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
                                  self.clickPointArray[i][0], self.clickPointArray[i][1])
-
-        elif e.button() == QtCore.Qt.RightButton:  # right click draws beziers
-            center = QPoint(e.x(), e.y())
-            if len(self.clickArr) < 1:
-                self.clickPointArray.append([e.x(), e.y(), b])
-            self.clickArr.append([e.x(), e.y()])
-            self.bezierPoints = Bezier(self.clickArr)
-            painter.drawEllipse(center, 2, 2)
 
         painter.end()
         self.update()
