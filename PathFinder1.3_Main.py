@@ -1,4 +1,3 @@
-
 # features:
 #
 # 1: display image on screen
@@ -284,9 +283,14 @@ class MainWindow(QtWidgets.QMainWindow):
             for i in range(1, len(self.clickPointArray)):
                 pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
                 painter.setPen(pen)
-                painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
-                                 self.clickPointArray[i][0], self.clickPointArray[i][1])
-
+                if self.clickPointArray[i][2]:
+                    painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                     self.clickPointArray[i][0], self.clickPointArray[i][1])
+                else:
+                    pen.setColor(QtGui.QColor(255, 100, 255))
+                    painter.setPen(pen)
+                    painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                     self.clickPointArray[i][0], self.clickPointArray[i][1])
         painter.end()
         self.update()
 
