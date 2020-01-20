@@ -1,3 +1,4 @@
+
 # features:
 #
 # 1: display image on screen
@@ -11,6 +12,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtWidgets import QPushButton, QCheckBox, QLineEdit
 from PyQt5.QtGui import QPixmap, QPainterPath
+import scipy.special
 import json
 
 from scipy.special.cython_special import binom
@@ -282,14 +284,9 @@ class MainWindow(QtWidgets.QMainWindow):
             for i in range(1, len(self.clickPointArray)):
                 pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
                 painter.setPen(pen)
-                if self.clickPointArray[i][2]:
-                    painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
-                                     self.clickPointArray[i][0], self.clickPointArray[i][1])
-                else:
-                    pen.setColor(QtGui.QColor(255, 100, 255))
-                    painter.setPen(pen)
-                    painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
-                                     self.clickPointArray[i][0], self.clickPointArray[i][1])
+                painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                 self.clickPointArray[i][0], self.clickPointArray[i][1])
+
         painter.end()
         self.update()
 
@@ -353,7 +350,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update()
         self.clickPointArray = dictData[self.PathNameText.text()].copy()  # change path array to new path array
         self.last_x, self.last_y = dictData[self.PathNameText.text()][-1][0], dictData[self.PathNameText.text()][-1][1]
-        self.clickArr = [[self.last_x, self.last_y]]
 
     def NewPath(self):
         self.colornum += 1
@@ -378,8 +374,6 @@ class MainWindow(QtWidgets.QMainWindow):
         painter2.end()
         self.update()
         self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
-
-        self.clickArr = [[self.last_x, self.last_y]]
 
 
 app = QtWidgets.QApplication(sys.argv)
