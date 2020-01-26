@@ -349,6 +349,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update()
         self.clickPointArray = dictData[self.PathNameText.text()].copy()  # change path array to new path array
         self.last_x, self.last_y = dictData[self.PathNameText.text()][-1][0], dictData[self.PathNameText.text()][-1][1]
+        self.clickArr = [[self.last_x, self.last_y]]
 
     def NewPath(self):
         self.colornum += 1
@@ -373,6 +374,7 @@ class MainWindow(QtWidgets.QMainWindow):
         painter2.end()
         self.update()
         self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
+        self.clickArr = [[self.last_x, self.last_y]]
 
 
 app = QtWidgets.QApplication(sys.argv)
