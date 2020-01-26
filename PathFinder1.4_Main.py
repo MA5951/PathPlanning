@@ -1,4 +1,3 @@
-
 # features:
 #
 # 1: display image on screen
@@ -154,13 +153,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, widthInit=width, heightInit=height):
         super().__init__()
 
-        self.destination = "PathFinder1.3_Data.json"
+        self.destination = "PathFinder1.4_Data.json"
         self.clickPointArray = None
         self.dataDict = {}
         self.btnHeight = 50  # standard button Height
         self.btnWidth = 75  # standard button Width
         self.pixmap = QPixmap(
-            'PathFinder1.3_2020-field.jpg'
+            'PathFinder1.4_2020-field.jpg'
         )  # image (and image path)
         realWidth = 22.71889  # m # 16.46
         realHeight = 9.533818  # m # 8.23
@@ -208,6 +207,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.PathNameText.resize(150, 25)
         self.PathNameText.move(150, heightInit + 25)
 
+        self.movePoints = QCheckBox('move points', self.label1)
+        self.movePoints.setStyleSheet("background-color: magenta")
+        self.movePoints.resize(self.btnWidth, self.btnHeight)
+        self.movePoints.move(450, heightInit)
+
         self.reverse = QCheckBox('reverse', self.label1)  # reverse button
         self.reverse.setStyleSheet("background-color: magenta")
         self.reverse.resize(self.btnWidth, self.btnHeight)
@@ -242,56 +246,82 @@ class MainWindow(QtWidgets.QMainWindow):
         painter.end()
 
     def mousePressEvent(self, e):
-        b = not self.reverse.isChecked()
+        if not self.movePoints.isChecked():
+            b = not self.reverse.isChecked()
 
-        if self.clickPointArray is None:
-            self.clickPointArray = points
-        pen = QtGui.QPen()
-        path = QPainterPath()
-        pen.setColor(QtGui.QColor(self.colorArr[self.colornum]))
-        pen.setWidth(5)
-        painter = QtGui.QPainter(self.label2.pixmap())
-        painter.setPen(pen)
+            if self.clickPointArray is None:
+                self.clickPointArray = points
+            pen = QtGui.QPen()
+            path = QPainterPath()
+            pen.setColor(QtGui.QColor(self.colorArr[self.colornum]))
+            pen.setWidth(5)
+            painter = QtGui.QPainter(self.label2.pixmap())
+            painter.setPen(pen)
 
-        if e.button() == QtCore.Qt.RightButton or self.clickPointArray is None:  # right click draws beziers
-            center = QPoint(e.x(), e.y())
-            if len(self.clickArr) < 1:
-                self.clickPointArray.append([e.x(), e.y(), b])
-            self.clickArr.append([e.x(), e.y()])
-            self.bezierPoints = Bezier(self.clickArr)
-            painter.drawEllipse(center, 2, 2)
+            if e.button() == QtCore.Qt.RightButton or self.clickPointArray is None:  # right click draws beziers
+                center = QPoint(e.x(), e.y())
+                if len(self.clickArr) < 1:
+                    self.clickPointArray.append([e.x(), e.y(), b])
+                self.clickArr.append([e.x(), e.y()])
+                self.bezierPoints = Bezier(self.clickArr)
+                painter.drawEllipse(center, 2, 2)
 
-        elif e.button() == QtCore.Qt.LeftButton:  # left button draws regular lines
-            if self.last_x is None:  # First event.
-                painter.drawEllipse(e.x(), e.y(), 2, 2)
-                self.last_x = e.x()
-                self.last_y = e.y()
+            elif e.button() == QtCore.Qt.LeftButton:  # left button draws regular lines
+                if self.last_x is None:  # First event.
+                    painter.drawEllipse(e.x(), e.y(), 2, 2)
+                    self.last_x = e.x()
+                    self.last_y = e.y()
 
-            # add point coordinates to coordinate array
-            if len(self.clickArr) > 1:
-                bPP = Bezier(self.clickArr, self.PointNum)
-                bPP = [[i[0], i[1]] for i in bPP]
-                for i in range(len(bPP[1::])):
-                    self.clickPointArray.append(
-                        [bPP[i + 1][0], bPP[i + 1][1], b, self.colornum])  # doesn't work for 1st point of
-                    # bezier, reason Unknown
-            self.clickPointArray.append([e.x(), e.y(), b, self.colornum])
+                # add point coordinates to coordinate array
+                if len(self.clickArr) > 1:
+                    bPP = Bezier(self.clickArr, self.PointNum)
+                    bPP = [[i[0], i[1]] for i in bPP]
+                    for i in range(len(bPP[1::])):
+                        self.clickPointArray.append(
+                            [bPP[i + 1][0], bPP[i + 1][1], b, self.colornum])  # doesn't work for 1st point of
+                        # bezier, reason Unknown
+                self.clickPointArray.append([e.x(), e.y(), b, self.colornum])
 
-            self.clickArr = [[e.x(), e.y()]]
+                self.clickArr = [[e.x(), e.y()]]
 
-            # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
+                # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
+                for i in range(1, len(self.clickPointArray)):
+                    pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                    painter.setPen(pen)
+                    painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                     self.clickPointArray[i][0], self.clickPointArray[i][1])
+
+            painter.end()
+            self.update()
+
+            # Update the origin for next time.
+            self.last_x = e.x()
+            self.last_y = e.y()
+
+    def mouseMoveEvent(self, e):
+        if self.movePoints.isChecked():
+            match = [[n, [e.x(), e.y(), n[2], n[3]]] for n in self.clickPointArray if
+                     e.x() - 20 <= n[0] <= e.x() + 20 and
+                     e.y() - 20 <= n[1] <= e.y() + 20]
+            if len(match) > 0:
+                self.clickPointArray[self.clickPointArray.index(match[0][0])] = match[0][1]
+                self.label2.setPixmap(self.pixmap)
+                self.draw_grid()
+
+            pen = QtGui.QPen()
+            pen.setColor(QtGui.QColor(self.colorArr[self.colornum]))
+            pen.setWidth(5)
+            painter = QtGui.QPainter(self.label2.pixmap())
+            painter.setPen(pen)
+
             for i in range(1, len(self.clickPointArray)):
                 pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
                 painter.setPen(pen)
                 painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
                                  self.clickPointArray[i][0], self.clickPointArray[i][1])
 
-        painter.end()
-        self.update()
-
-        # Update the origin for next time.
-        self.last_x = e.x()
-        self.last_y = e.y()
+            painter.end()
+            self.update()
 
     # Button methods
     def PathInfoDef(self):
