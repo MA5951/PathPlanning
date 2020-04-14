@@ -13,10 +13,13 @@ from PyQt5.QtCore import Qt, QPoint, QSize
 from PyQt5.QtWidgets import QPushButton, QCheckBox, QLineEdit, QTextEdit
 from PyQt5.QtGui import QPixmap, QPainterPath, QImage
 from PIL.ImageQt import ImageQt
-from PIL import ImageEnhance
+import tkinter as tk
+from tkinter import filedialog
 import json
-
 from scipy.special.cython_special import binom
+
+root = tk.Tk()
+root.withdraw()
 
 
 def Bernstein(n, k):
@@ -148,9 +151,16 @@ def sortPointsIntoPathInfo(pointArr, ratios):  # fix later
     return totalInfo, printInfo
 
 
+filePath = filedialog.askopenfilename()
+
+
 class MainWindow(QtWidgets.QMainWindow):
-    width = 1275  # 1600
-    height = 455  # 650
+    if filePath != "":
+        rawFieldImg = ImageQt(filePath)  # image (and image path)
+    else:
+        rawFieldImg = ImageQt("PathFinder_2020-field.jpg")
+    width = rawFieldImg.width() + 85  # application width
+    height = rawFieldImg.height() - 50 # application height
 
     def __init__(self, widthInit=width, heightInit=height):
         super().__init__()
@@ -160,9 +170,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dataDict = {}
         self.btnHeight = 50  # standard button Height
         self.btnWidth = 75  # standard button Width
-        self.btnPosX = 1195
-        self.rawFieldImg = ImageQt('PathFinder_2020-field.jpg')
-        self.pixmap = QPixmap.fromImage(self.rawFieldImg) # image (and image path)
+        self.btnPosX =self.width - 80
+        if filePath != "":
+            self.pixmap = QPixmap(filePath) # image (and image path)
+        else:
+            self.pixmap = QPixmap("PathFinder_2020-field.jpg")
         realWidth = 22.71889  # m # 16.46
         realHeight = 9.533818  # m # 8.23
         self.PointNum = 7  # number of points whose values are calculated in the bezier curves
@@ -187,28 +199,11 @@ class MainWindow(QtWidgets.QMainWindow):
         GetPathInfo.move(self.btnPosX, 0)
         GetPathInfo.clicked.connect(self.PathInfoDef)
 
-        saveCurrentPath = QPushButton('Save this path', self.label1)
-        saveCurrentPath.setStyleSheet("background-color: light gray")
-        saveCurrentPath.resize(self.btnWidth + 4, self.btnHeight - 25)
-        saveCurrentPath.move(self.btnPosX - 2, 175)
-        saveCurrentPath.clicked.connect(self.SavePath)
-
-        drawPath = QPushButton('draw this path', self.label1)
-        drawPath.setStyleSheet("background-color: light gray")
-        drawPath.resize(self.btnWidth + 4, self.btnHeight - 25)
-        drawPath.move(self.btnPosX - 2, 250)
-        drawPath.clicked.connect(self.DrawPath)
-
         delPnt = QPushButton('delete point', self.label1)  # a button to delete points
         delPnt.setStyleSheet("background-color: light gray")
         delPnt.resize(self.btnWidth, self.btnHeight)
         delPnt.move(self.btnPosX, 73)
         delPnt.clicked.connect(self.DeletePoint)
-
-        self.PathNameText = QTextEdit(self.label1)
-        self.PathNameText.setFixedSize(QSize(75, 50))
-        self.PathNameText.setLineWrapMode(True)
-        self.PathNameText.move(self.btnPosX, 200)
 
         self.reverse = QCheckBox('reverse', self.label1)  # reverse button
         self.reverse.resize(self.btnWidth, self.btnHeight)
@@ -220,7 +215,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nextPathB.move(self.btnPosX, 125)
         self.nextPathB.clicked.connect(self.NewPath)
 
-        canvas = QtGui.QPixmap(widthInit, heightInit + 50)
+        saveCurrentPath = QPushButton('Save this path', self.label1)
+        saveCurrentPath.setStyleSheet("background-color: light gray")
+        saveCurrentPath.resize(self.btnWidth + 4, self.btnHeight - 25)
+        saveCurrentPath.move(self.btnPosX - 2, 175)
+        saveCurrentPath.clicked.connect(self.SavePath)
+
+        self.PathNameText = QTextEdit(self.label1)  # 'Save this path' and 'draw this path' textbox configuration
+        self.PathNameText.setFixedSize(QSize(75, 50))
+        self.PathNameText.setLineWrapMode(True)
+        self.PathNameText.move(self.btnPosX, 200)
+
+        drawPath = QPushButton('draw this path', self.label1)
+        drawPath.setStyleSheet("background-color: light gray")
+        drawPath.resize(self.btnWidth + 4, self.btnHeight - 25)
+        drawPath.move(self.btnPosX - 2, 250)
+        drawPath.clicked.connect(self.DrawPath)
+
+        canvas = QtGui.QPixmap(int(widthInit), int(heightInit + 50))
         canvas.fill(Qt.lightGray)
         self.label1.setPixmap(canvas)
         self.label2.setPixmap(self.pixmap)
@@ -229,8 +241,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.draw_grid()
 
     def draw_grid(self, width_grid=width, height_grid=height):
-        IntervalY = 65  # 185 = 1m
-        IntervalX = 65  # 130 = 1m
+        IntervalY = 50  # 185 = 1m
+        IntervalX = 50  # 130 = 1m
         linesV = int(height_grid / IntervalY)
         linesH = int(width_grid / IntervalY)
         painter = QtGui.QPainter(self.label2.pixmap())
@@ -238,8 +250,8 @@ class MainWindow(QtWidgets.QMainWindow):
         pen.setColor(QtGui.QColor("gray"))
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawLines(QtCore.QLineF(0, y * IntervalY, width_grid, y * IntervalY) for y in range(linesV * 2))
-        painter.drawLines(QtCore.QLineF(x * IntervalX, 0, x * IntervalX, height_grid) for x in range(linesH * 2))
+        painter.drawLines(QtCore.QLineF(0, y * IntervalY, width_grid + IntervalX, y * IntervalY) for y in range(linesV * 2))
+        painter.drawLines(QtCore.QLineF(x * IntervalX, 0, x * IntervalX, height_grid + IntervalY) for x in range(linesH * 2))
         painter.end()
 
     def mousePressEvent(self, e):
@@ -337,7 +349,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         painter2 = QtGui.QPainter(self.label2.pixmap())
         pen2 = QtGui.QPen()
-        pen2.setColor(QtGui.QColor(175, 175, 175))
         pen2.setWidth(5)
         pen2.setColor(QtGui.QColor('orange'))
         painter2.setPen(pen2)
