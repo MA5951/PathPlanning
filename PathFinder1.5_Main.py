@@ -1,4 +1,3 @@
-
 # features:
 #
 # 1: display image on screen
@@ -10,22 +9,32 @@ from math import atan2
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QPoint, QSize
-from PyQt5.QtWidgets import QPushButton, QCheckBox, QLineEdit, QTextEdit
-from PyQt5.QtGui import QPixmap, QPainterPath, QImage
+from PyQt5.QtWidgets import QPushButton, QCheckBox, QTextEdit
+from PyQt5.QtGui import QPixmap, QPainterPath
 from PIL.ImageQt import ImageQt
 import tkinter as tk
 from tkinter import filedialog
 import json
-from scipy.special.cython_special import binom
 
 root = tk.Tk()
 root.withdraw()
+
+
+def binom(n, k):
+    if not 0 <= k <= n: return 0
+    b = 1
+    for t in range(min(k, n - k)):
+        b *= n
+        b /= t + 1
+        n -= 1
+    return b
 
 
 def Bernstein(n, k):
     """Bernstein polynomial.
     """
     coeff = binom(n, k)
+    print(coeff)
 
     def _bpoly(x):
         return coeff * x ** k * (1 - x) ** (n - k)
@@ -160,7 +169,7 @@ class MainWindow(QtWidgets.QMainWindow):
     else:
         rawFieldImg = ImageQt("PathFinder_2020-field.jpg")
     width = rawFieldImg.width() + 85  # application width
-    height = rawFieldImg.height() - 50 # application height
+    height = rawFieldImg.height() - 50  # application height
 
     def __init__(self, widthInit=width, heightInit=height):
         super().__init__()
@@ -170,9 +179,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dataDict = {}
         self.btnHeight = 50  # standard button Height
         self.btnWidth = 75  # standard button Width
-        self.btnPosX =self.width - 80
+        self.btnPosX = self.width - 80
+        self.mirrorMode = 2
         if filePath != "":
-            self.pixmap = QPixmap(filePath) # image (and image path)
+            self.pixmap = QPixmap(filePath)  # image (and image path)
         else:
             self.pixmap = QPixmap("PathFinder_2020-field.jpg")
         realWidth = 22.71889  # m # 16.46
@@ -232,6 +242,12 @@ class MainWindow(QtWidgets.QMainWindow):
         drawPath.move(self.btnPosX - 2, 250)
         drawPath.clicked.connect(self.DrawPath)
 
+        self.mirrorBtn = QPushButton('mirror', self.label1)
+        self.mirrorBtn.setStyleSheet("background-color: light gray")
+        self.mirrorBtn.resize(self.btnWidth, self.btnHeight)
+        self.mirrorBtn.move(self.btnPosX, 275)
+        self.mirrorBtn.clicked.connect(self.mirror)
+
         canvas = QtGui.QPixmap(int(widthInit), int(heightInit + 50))
         canvas.fill(Qt.lightGray)
         self.label1.setPixmap(canvas)
@@ -250,27 +266,51 @@ class MainWindow(QtWidgets.QMainWindow):
         pen.setColor(QtGui.QColor("gray"))
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawLines(QtCore.QLineF(0, y * IntervalY, width_grid + IntervalX, y * IntervalY) for y in range(linesV * 2))
-        painter.drawLines(QtCore.QLineF(x * IntervalX, 0, x * IntervalX, height_grid + IntervalY) for x in range(linesH * 2))
+        painter.drawLines(
+            QtCore.QLineF(0, y * IntervalY, width_grid + IntervalX, y * IntervalY) for y in range(linesV * 2))
+        painter.drawLines(
+            QtCore.QLineF(x * IntervalX, 0, x * IntervalX, height_grid + IntervalY) for x in range(linesH * 2))
+        painter.end()
+
+    def draw_mirror(self, mirrorType, labelWidth=width, labelHeight=height):
+        painter = QtGui.QPainter(self.label2.pixmap())
+        pen = QtGui.QPen()
+        pen.setColor(QtGui.QColor("cyan"))
+        pen.setWidth(5)
+        painter.setPen(pen)
+
+        if mirrorType == 0:
+            painter.drawLine(int(labelWidth / 2) - 50, 0, int(labelWidth / 2) - 50, labelHeight + 50)
+        elif mirrorType == 1:
+            painter.drawLine(0, int(labelHeight / 2), labelWidth, int(labelHeight / 2))
+
         painter.end()
 
     def mousePressEvent(self, e):
         b = not self.reverse.isChecked()
 
+        if self.mirrorMode == 2:
+            self.label2.setPixmap(self.pixmap)
+            self.draw_grid()
+
         if self.clickPointArray is None:
             self.clickPointArray = points
         pen = QtGui.QPen()
-        path = QPainterPath()
-        pen.setColor(QtGui.QColor(self.colorArr[self.colornum]))
+        pen.setColor(QtGui.QColor("cyan"))
         pen.setWidth(5)
         painter = QtGui.QPainter(self.label2.pixmap())
         painter.setPen(pen)
 
+        #  if self.mirrorMode == 0:
+        #      painter.drawLine(int(self.width / 2) - 50, 0, int(self.width / 2) - 50, self.height + 50)
+        #  elif self.mirrorMode == 1:
+        #      painter.drawLine(0, int(self.height / 2), self.width, int(self.height / 2))
+
         if e.button() == QtCore.Qt.RightButton or self.clickPointArray is None:  # right click draws beziers
             center = QPoint(e.x(), e.y())
             if len(self.clickArr) < 1:
-                self.clickPointArray.append([e.x(), e.y(), b])
-            self.clickArr.append([e.x(), e.y()])
+                self.clickPointArray.insert(len(self.clickPointArray), [e.x(), e.y()])
+            self.clickArr.insert(len(self.clickArr), [e.x(), e.y()])
             self.bezierPoints = Bezier(self.clickArr)
             painter.drawEllipse(center, 2, 2)
 
@@ -285,8 +325,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 bPP = Bezier(self.clickArr, self.PointNum)
                 bPP = [[i[0], i[1]] for i in bPP]
                 for i in range(len(bPP[1::])):
-                    self.clickPointArray.append(
-                        [bPP[i + 1][0], bPP[i + 1][1], b, self.colornum])  # doesn't work for 1st point of
+                    self.clickPointArray.insert(len(self.clickPointArray),
+                                                [bPP[i + 1][0], bPP[i + 1][1], b,
+                                                 self.colornum])  # doesn't work for 1st point of
                     # bezier, reason Unknown
             self.clickPointArray.append([e.x(), e.y(), b, self.colornum])
 
@@ -307,6 +348,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.last_y = e.y()
 
     # Button methods
+    def mirror(self):
+        self.label2.setPixmap(self.pixmap)
+        self.draw_grid()
+
+        self.mirrorMode = (self.mirrorMode + 1) % 3
+
+        self.draw_mirror(self.mirrorMode)
+        painter2 = QtGui.QPainter(self.label2.pixmap())
+        pen2 = QtGui.QPen()
+        pen2.setWidth(5)
+        pen2.setColor(QtGui.QColor('cyan'))
+        painter2.setPen(pen2)
+        # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
+        pen2.setColor(QtGui.QColor('purple'))
+        painter2.setPen(pen2)
+        if self.clickPointArray is not None:
+            for i in range(1, len(self.clickPointArray)):
+                pen2.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                  self.clickPointArray[i][0], self.clickPointArray[i][1])
+
+        painter2.end()
+        self.update()
+
     def PathInfoDef(self):
         infoArr, printArr = sortPointsIntoPathInfo(self.clickPointArray, [self.widthRatio, self.heightRatio])
         lines = [
@@ -325,17 +390,17 @@ class MainWindow(QtWidgets.QMainWindow):
         print("\n")
 
     def SavePath(self):
-        self.dataDict[self.PathNameText.text()] = self.clickPointArray.copy()
+        self.dataDict[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
 
         try:
             with open(self.destination, "r") as json_data:
                 dictData = json.load(json_data)
         except:
-            dictData = {self.PathNameText.text(): self.clickPointArray.copy()}
+            dictData = {self.PathNameText.toPlainText(): self.clickPointArray.copy()}
 
         print(dictData)
 
-        dictData[self.PathNameText.text()] = self.clickPointArray.copy()
+        dictData[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
 
         with open(self.destination, 'w') as json_data:
             json.dump(dictData, json_data)
@@ -346,6 +411,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.label2.setPixmap(self.pixmap)
         self.draw_grid()
+        self.draw_mirror(self.mirrorMode)
 
         painter2 = QtGui.QPainter(self.label2.pixmap())
         pen2 = QtGui.QPen()
@@ -353,38 +419,40 @@ class MainWindow(QtWidgets.QMainWindow):
         pen2.setColor(QtGui.QColor('orange'))
         painter2.setPen(pen2)
 
-        for i in range(1, len(dictData[self.PathNameText.text()])):
-            painter2.drawLine(dictData[self.PathNameText.text()][i - 1][0],
-                              dictData[self.PathNameText.text()][i - 1][1],
-                              dictData[self.PathNameText.text()][i][0], dictData[self.PathNameText.text()][i][1])
+        for i in range(1, len(dictData[self.PathNameText.toPlainText()])):
+            painter2.drawLine(dictData[self.PathNameText.toPlainText()][i - 1][0],
+                              dictData[self.PathNameText.toPlainText()][i - 1][1],
+                              dictData[self.PathNameText.toPlainText()][i][0],
+                              dictData[self.PathNameText.toPlainText()][i][1])
         painter2.end()
         self.update()
-        self.clickPointArray = dictData[self.PathNameText.text()].copy()  # change path array to new path array
-        self.last_x, self.last_y = dictData[self.PathNameText.text()][-1][0], dictData[self.PathNameText.text()][-1][1]
+        self.clickPointArray = dictData[self.PathNameText.toPlainText()].copy()  # change path array to new path array
+        self.last_x, self.last_y = dictData[self.PathNameText.toPlainText()][-1][0], \
+                                   dictData[self.PathNameText.toPlainText()][-1][1]
 
     def NewPath(self):
         self.colornum += 1
 
     def DeletePoint(self):
+        if self.clickPointArray is not None and len(self.clickPointArray) != 1:
+            self.label2.setPixmap(self.pixmap)
+            self.draw_grid()
 
-        self.label2.setPixmap(self.pixmap)
-        self.draw_grid()
+            painter2 = QtGui.QPainter(self.label2.pixmap())
+            pen2 = QtGui.QPen()
+            pen2.setColor(QtGui.QColor(175, 175, 175))
+            pen2.setWidth(5)
+            pen2.setColor(QtGui.QColor('orange'))
+            painter2.setPen(pen2)
+            self.clickPointArray = self.clickPointArray[:-1]  # change path array to new path array
 
-        painter2 = QtGui.QPainter(self.label2.pixmap())
-        pen2 = QtGui.QPen()
-        pen2.setColor(QtGui.QColor(175, 175, 175))
-        pen2.setWidth(5)
-        pen2.setColor(QtGui.QColor('orange'))
-        painter2.setPen(pen2)
-        self.clickPointArray = self.clickPointArray[:-1]  # change path array to new path array
-
-        for i in range(1, len(self.clickPointArray)):
-            painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
-                              self.clickPointArray[i][0], self.clickPointArray[i][1])
-            print(self.clickPointArray[i][0], self.clickPointArray[i][0])
-        painter2.end()
-        self.update()
-        self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
+            for i in range(1, len(self.clickPointArray)):
+                painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                  self.clickPointArray[i][0], self.clickPointArray[i][1])
+                print(self.clickPointArray[i][0], self.clickPointArray[i][0])
+            painter2.end()
+            self.update()
+            self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
 
 
 app = QtWidgets.QApplication(sys.argv)
