@@ -4,6 +4,7 @@
 # 2: display grid on screen
 # 3: draw lines between points by click order
 # 4: save line coordinates in meters
+import copy
 import numpy as np
 from math import atan2
 import sys
@@ -34,7 +35,6 @@ def Bernstein(n, k):
     """Bernstein polynomial.
     """
     coeff = binom(n, k)
-    print(coeff)
 
     def _bpoly(x):
         return coeff * x ** k * (1 - x) ** (n - k)
@@ -181,6 +181,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btnWidth = 75  # standard button Width
         self.btnPosX = self.width - 80
         self.mirrorMode = 2
+        self.mirrorP_Num = 0
         if filePath != "":
             self.pixmap = QPixmap(filePath)  # image (and image path)
         else:
@@ -193,7 +194,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.bezierPoints = []
         self.bPP = []  # bezier Points Print
         self.bSC = 5  # bezier Segment Count
-        self.colorArr = ["purple", "blue", "green", "red", "cyan", "magenta", "yellow", "black", "white"]
+        self.colorArr = ["pink", "blue", "green", "red", "cyan", "magenta", "yellow", "black", "white"]
         self.colornum = 0
 
         self.widthRatio = widthInit / realWidth
@@ -236,17 +237,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.PathNameText.setLineWrapMode(True)
         self.PathNameText.move(self.btnPosX, 200)
 
-        drawPath = QPushButton('draw this path', self.label1)
+        drawPath = QPushButton('Draw this path', self.label1)
         drawPath.setStyleSheet("background-color: light gray")
         drawPath.resize(self.btnWidth + 4, self.btnHeight - 25)
         drawPath.move(self.btnPosX - 2, 250)
         drawPath.clicked.connect(self.DrawPath)
 
-        self.mirrorBtn = QPushButton('mirror', self.label1)
+        self.mirrorBtn = QPushButton('Mirror', self.label1)
         self.mirrorBtn.setStyleSheet("background-color: light gray")
         self.mirrorBtn.resize(self.btnWidth, self.btnHeight)
         self.mirrorBtn.move(self.btnPosX, 275)
         self.mirrorBtn.clicked.connect(self.mirror)
+
+        self.mirrorAllBtn = QPushButton('Mirror All', self.label1)
+        self.mirrorAllBtn.setStyleSheet("background-color: light gray")
+        self.mirrorAllBtn.resize(self.btnWidth, self.btnHeight)
+        self.mirrorAllBtn.move(self.btnPosX, 325)
+        self.mirrorAllBtn.clicked.connect(self.mirrorAll)
+
+        self.clearBtn = QPushButton('Clear', self.label1)
+        self.clearBtn.setStyleSheet("background-color: light gray")
+        self.clearBtn.resize(self.btnWidth, self.btnHeight)
+        self.clearBtn.move(self.btnPosX, 375)
+        self.clearBtn.clicked.connect(self.clear)
 
         canvas = QtGui.QPixmap(int(widthInit), int(heightInit + 50))
         canvas.fill(Qt.lightGray)
@@ -275,6 +288,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def draw_mirror(self, mirrorType, labelWidth=width, labelHeight=height):
         painter = QtGui.QPainter(self.label2.pixmap())
         pen = QtGui.QPen()
+
         pen.setColor(QtGui.QColor("cyan"))
         pen.setWidth(5)
         painter.setPen(pen)
@@ -286,8 +300,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
         painter.end()
 
+    def paint_path(self, pointArr, colorArr):
+        for i in range(1, len(pointArr)):
+            painter = QtGui.QPainter(self.label2.pixmap())
+            pen = QtGui.QPen()
+
+            pen.setColor(QtGui.QColor(colorArr[pointArr[i][3]]))
+            painter.setPen(pen)
+            painter.drawLine(pointArr[i - 1][0], pointArr[i - 1][1],
+                             pointArr[i][0], pointArr[i][1])
+
+            painter.end()
+
     def mousePressEvent(self, e):
-        b = not self.reverse.isChecked()
+        isReverse = not self.reverse.isChecked()
 
         if self.mirrorMode == 2:
             self.label2.setPixmap(self.pixmap)
@@ -296,23 +322,19 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.clickPointArray is None:
             self.clickPointArray = points
         pen = QtGui.QPen()
-        pen.setColor(QtGui.QColor("cyan"))
+        pen.setColor(QtGui.QColor("pink"))
         pen.setWidth(5)
         painter = QtGui.QPainter(self.label2.pixmap())
         painter.setPen(pen)
 
-        #  if self.mirrorMode == 0:
-        #      painter.drawLine(int(self.width / 2) - 50, 0, int(self.width / 2) - 50, self.height + 50)
-        #  elif self.mirrorMode == 1:
-        #      painter.drawLine(0, int(self.height / 2), self.width, int(self.height / 2))
-
-        if e.button() == QtCore.Qt.RightButton or self.clickPointArray is None:  # right click draws beziers
+        if e.button() == QtCore.Qt.RightButton:  # right click draws beziers
             center = QPoint(e.x(), e.y())
             if len(self.clickArr) < 1:
-                self.clickPointArray.insert(len(self.clickPointArray), [e.x(), e.y()])
+                self.clickPointArray.insert(len(self.clickPointArray), [e.x(), e.y(), isReverse, self.colornum])
             self.clickArr.insert(len(self.clickArr), [e.x(), e.y()])
             self.bezierPoints = Bezier(self.clickArr)
-            painter.drawEllipse(center, 2, 2)
+            for i in range(len(self.clickArr)):
+                painter.drawEllipse(QPoint(self.clickArr[i][0], self.clickArr[i][1]), 2, 2)
 
         elif e.button() == QtCore.Qt.LeftButton:  # left button draws regular lines
             if self.last_x is None:  # First event.
@@ -324,21 +346,23 @@ class MainWindow(QtWidgets.QMainWindow):
             if len(self.clickArr) > 1:
                 bPP = Bezier(self.clickArr, self.PointNum)
                 bPP = [[i[0], i[1]] for i in bPP]
-                for i in range(len(bPP[1::])):
-                    self.clickPointArray.insert(len(self.clickPointArray),
-                                                [bPP[i + 1][0], bPP[i + 1][1], b,
-                                                 self.colornum])  # doesn't work for 1st point of
-                    # bezier, reason Unknown
-            self.clickPointArray.append([e.x(), e.y(), b, self.colornum])
+            else:
+                bPP = [[e.x(), e.y()]]
+            for i in range(len(bPP)):
+                self.clickPointArray.insert(len(self.clickPointArray),
+                                            [bPP[i][0], bPP[i][1], isReverse,
+                                             self.colornum])  # doesn't work for 1st point of
+                # bezier, reason Unknown
 
             self.clickArr = [[e.x(), e.y()]]
 
-            # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
-            for i in range(1, len(self.clickPointArray)):
-                pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
-                painter.setPen(pen)
-                painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
-                                 self.clickPointArray[i][0], self.clickPointArray[i][1])
+        # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
+        #  swap with draw_path function later
+        for i in range(1, len(self.clickPointArray)):
+            pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+            painter.setPen(pen)
+            painter.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                             self.clickPointArray[i][0], self.clickPointArray[i][1])
 
         painter.end()
         self.update()
@@ -361,16 +385,48 @@ class MainWindow(QtWidgets.QMainWindow):
         pen2.setColor(QtGui.QColor('cyan'))
         painter2.setPen(pen2)
         # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
-        pen2.setColor(QtGui.QColor('purple'))
+        pen2.setColor(QtGui.QColor('pink'))
         painter2.setPen(pen2)
         if self.clickPointArray is not None:
             for i in range(1, len(self.clickPointArray)):
                 pen2.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                painter2.setPen(pen2)
                 painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
                                   self.clickPointArray[i][0], self.clickPointArray[i][1])
 
         painter2.end()
         self.update()
+
+    def mirrorAll(self):
+        if self.clickPointArray is not None and self.mirrorMode != 2:
+            self.label2.setPixmap(self.pixmap)
+            self.draw_grid()
+
+            painter2 = QtGui.QPainter(self.label2.pixmap())
+            pen2 = QtGui.QPen()
+            pen2.setColor(QtGui.QColor(175, 175, 175))
+            pen2.setWidth(5)
+            pen2.setColor(QtGui.QColor('orange'))
+            painter2.setPen(pen2)
+            clickPointArrayMirrored = copy.deepcopy(self.clickPointArray)[::-1]
+            if self.mirrorMode == 0:
+                for i in clickPointArrayMirrored: i[0] -= 2 * (i[0] - int(self.width / 2)) + 100
+                self.clickPointArray += clickPointArrayMirrored  # change path array to new path array
+            elif self.mirrorMode == 1:
+                for i in clickPointArrayMirrored: i[1] -= 2 * (i[1] - int(self.height / 2))
+                #  clickPointArrayMirrored[0][0] = 0
+                self.clickPointArray += clickPointArrayMirrored  # change path array to new path array
+            self.clickArr = [[self.clickPointArray[-1][0], self.clickPointArray[-1][1]]]  # updates bezier points
+            # starting point if it is deleted
+
+            for i in range(1, len(self.clickPointArray)):
+                pen2.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                painter2.setPen(pen2)
+                painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                  self.clickPointArray[i][0], self.clickPointArray[i][1])
+            painter2.end()
+            self.update()
+            self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
 
     def PathInfoDef(self):
         infoArr, printArr = sortPointsIntoPathInfo(self.clickPointArray, [self.widthRatio, self.heightRatio])
@@ -388,6 +444,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for line in lines[1:]:
             print(line)
         print("\n")
+        print(self.clickPointArray)
 
     def SavePath(self):
         self.dataDict[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
@@ -397,8 +454,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 dictData = json.load(json_data)
         except:
             dictData = {self.PathNameText.toPlainText(): self.clickPointArray.copy()}
-
-        print(dictData)
 
         dictData[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
 
@@ -430,6 +485,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.last_x, self.last_y = dictData[self.PathNameText.toPlainText()][-1][0], \
                                    dictData[self.PathNameText.toPlainText()][-1][1]
 
+    def clear(self):
+        self.clickArr = []
+        self.clickPointArray = []
+        self.bezierPoints = []
+
+        self.label2.setPixmap(self.pixmap)
+        self.draw_grid()
+        self.draw_mirror(self.mirrorMode)
+        self.update()
+
     def NewPath(self):
         self.colornum += 1
 
@@ -446,10 +511,14 @@ class MainWindow(QtWidgets.QMainWindow):
             painter2.setPen(pen2)
             self.clickPointArray = self.clickPointArray[:-1]  # change path array to new path array
 
+            self.clickArr = [[self.clickPointArray[-1][0], self.clickPointArray[-1][1]]]  # updates bezier points
+            # starting point if it is deleted
+
             for i in range(1, len(self.clickPointArray)):
+                pen2.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                painter2.setPen(pen2)
                 painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
                                   self.clickPointArray[i][0], self.clickPointArray[i][1])
-                print(self.clickPointArray[i][0], self.clickPointArray[i][0])
             painter2.end()
             self.update()
             self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
