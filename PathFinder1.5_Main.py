@@ -398,35 +398,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update()
 
     def mirrorAll(self):
-        if self.clickPointArray is not None and self.mirrorMode != 2:
-            self.label2.setPixmap(self.pixmap)
-            self.draw_grid()
+        try:
+            if self.clickPointArray is not None and len(self.clickPointArray) != 1:
+                self.label2.setPixmap(self.pixmap)
+                self.draw_grid()
 
-            painter2 = QtGui.QPainter(self.label2.pixmap())
-            pen2 = QtGui.QPen()
-            pen2.setColor(QtGui.QColor(175, 175, 175))
-            pen2.setWidth(5)
-            pen2.setColor(QtGui.QColor('orange'))
-            painter2.setPen(pen2)
-            clickPointArrayMirrored = copy.deepcopy(self.clickPointArray)[::-1]
-            if self.mirrorMode == 0:
-                for i in clickPointArrayMirrored: i[0] -= 2 * (i[0] - int(self.width / 2)) + 100
-                self.clickPointArray += clickPointArrayMirrored  # change path array to new path array
-            elif self.mirrorMode == 1:
-                for i in clickPointArrayMirrored: i[1] -= 2 * (i[1] - int(self.height / 2))
-                #  clickPointArrayMirrored[0][0] = 0
-                self.clickPointArray += clickPointArrayMirrored  # change path array to new path array
-            self.clickArr = [[self.clickPointArray[-1][0], self.clickPointArray[-1][1]]]  # updates bezier points
-            # starting point if it is deleted
-
-            for i in range(1, len(self.clickPointArray)):
-                pen2.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                painter2 = QtGui.QPainter(self.label2.pixmap())
+                pen2 = QtGui.QPen()
+                pen2.setColor(QtGui.QColor(175, 175, 175))
+                pen2.setWidth(5)
+                pen2.setColor(QtGui.QColor('orange'))
                 painter2.setPen(pen2)
-                painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
-                                  self.clickPointArray[i][0], self.clickPointArray[i][1])
-            painter2.end()
-            self.update()
-            self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
+                clickPointArrayMirrored = copy.deepcopy(self.clickPointArray)[::-1]
+                if self.mirrorMode == 0:
+                    for i in clickPointArrayMirrored: i[0] -= 2 * (i[0] - int(self.width / 2)) + 100
+                    self.clickPointArray += clickPointArrayMirrored  # change path array to new path array
+                elif self.mirrorMode == 1:
+                    for i in clickPointArrayMirrored: i[1] -= 2 * (i[1] - int(self.height / 2))
+                    #  clickPointArrayMirrored[0][0] = 0
+                    self.clickPointArray += clickPointArrayMirrored  # change path array to new path array
+                self.clickArr = [[self.clickPointArray[-1][0], self.clickPointArray[-1][1]]]  # updates bezier points
+                # starting point if it is deleted
+
+                for i in range(1, len(self.clickPointArray)):
+                    pen2.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
+                    painter2.setPen(pen2)
+                    painter2.drawLine(self.clickPointArray[i - 1][0], self.clickPointArray[i - 1][1],
+                                      self.clickPointArray[i][0], self.clickPointArray[i][1])
+                painter2.end()
+                self.update()
+                self.last_x, self.last_y = self.clickPointArray[-1][0], self.clickPointArray[-1][1]
+        except:
+            pass
 
     def PathInfoDef(self):
         infoArr, printArr = sortPointsIntoPathInfo(self.clickPointArray, [self.widthRatio, self.heightRatio])
@@ -438,13 +441,13 @@ class MainWindow(QtWidgets.QMainWindow):
         lines[-1] = "new double[]{" + str(printArr[0][-1])[:5] + ", " + str(
             printArr[1][-1]) + ", " + "0.05" + ", 10, 0.3, 0.7}"
 
-        for iLine in infoArr:
-            print(iLine)
+        #  for iLine in infoArr:
+        #      print(iLine)
 
         for line in lines[1:]:
             print(line)
         print("\n")
-        print(self.clickPointArray)
+        #  print(self.clickPointArray)
 
     def SavePath(self):
         self.dataDict[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
