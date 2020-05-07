@@ -1,2 +1,2 @@
 # PathPlanning
-currently only works using pycharm
+currently also works without pycharm
