@@ -11,7 +11,7 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QPoint, QSize
 from PyQt5.QtWidgets import QPushButton, QCheckBox, QTextEdit
-from PyQt5.QtGui import QPixmap, QPainterPath
+from PyQt5.QtGui import QPixmap
 import tkinter as tk
 from tkinter import filedialog
 import json
