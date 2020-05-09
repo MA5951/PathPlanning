@@ -18,7 +18,6 @@ from PathFinder_Functions import *
 root = tk.Tk()
 root.withdraw()
 
-
 filePath = filedialog.askopenfilename()
 
 
@@ -69,15 +68,15 @@ class MainWindow(QtWidgets.QMainWindow):
         GetPathInfo.move(self.btnPosX, 0)
         GetPathInfo.clicked.connect(self.PathInfoDef)
 
-        delPnt = QPushButton('delete point', self.label1)  # a button to delete points
-        delPnt.setStyleSheet("background-color: light gray")
-        delPnt.resize(self.btnWidth, self.btnHeight)
-        delPnt.move(self.btnPosX, 73)
-        delPnt.clicked.connect(self.DeletePoint)
-
         self.reverse = QCheckBox('reverse', self.label1)  # reverse button
         self.reverse.resize(self.btnWidth, self.btnHeight)
         self.reverse.move(self.btnPosX + 10, 35)
+
+        delPnt = QPushButton('delete point', self.label1)  # a button to delete points
+        delPnt.setStyleSheet("background-color: light gray")
+        delPnt.resize(self.btnWidth, self.btnHeight + 5)
+        delPnt.move(self.btnPosX, 70)
+        delPnt.clicked.connect(self.DeletePoint)
 
         self.nextPathB = QPushButton('next path', self.label1)  # next path button
         self.nextPathB.setStyleSheet("background-color: light gray")
@@ -120,6 +119,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.clearBtn.move(self.btnPosX, 375)
         self.clearBtn.clicked.connect(self.clear)
 
+        self.dragPointBtn = QCheckBox('Move Point', self.label1)
+        self.dragPointBtn.resize(self.btnWidth, self.btnHeight)
+        self.dragPointBtn.move(self.btnPosX, 410)
+
         canvas = QtGui.QPixmap(int(widthInit), int(heightInit + 50))
         canvas.fill(Qt.lightGray)
         self.label1.setPixmap(canvas)
@@ -144,26 +147,10 @@ class MainWindow(QtWidgets.QMainWindow):
             QtCore.QLineF(x * IntervalX, 0, x * IntervalX, height_grid + IntervalY) for x in range(linesH * 2))
         painter.end()
 
-    def draw_mirror(self, mirrorType, labelWidth=width, labelHeight=height):
+    def paint_path(self, pointArr, colorArr):
         painter = QtGui.QPainter(self.label2.pixmap())
         pen = QtGui.QPen()
-
-        pen.setColor(QtGui.QColor("cyan"))
-        pen.setWidth(5)
-        painter.setPen(pen)
-
-        if mirrorType == 0:
-            painter.drawLine(int(labelWidth / 2) - 50, 0, int(labelWidth / 2) - 50, labelHeight + 50)
-        elif mirrorType == 1:
-            painter.drawLine(0, int(labelHeight / 2), labelWidth, int(labelHeight / 2))
-
-        painter.end()
-
-    def paint_path(self, pointArr, colorArr):
         for i in range(1, len(pointArr)):
-            painter = QtGui.QPainter(self.label2.pixmap())
-            pen = QtGui.QPen()
-
             pen.setColor(QtGui.QColor(colorArr[pointArr[i][3]]))
             painter.setPen(pen)
             painter.drawLine(pointArr[i - 1][0], pointArr[i - 1][1],
@@ -185,9 +172,16 @@ class MainWindow(QtWidgets.QMainWindow):
         pen.setWidth(5)
         painter = QtGui.QPainter(self.label2.pixmap())
         painter.setPen(pen)
-
-        if e.button() == QtCore.Qt.RightButton:  # right click draws beziers
-            center = QPoint(e.x(), e.y())
+        if self.dragPointBtn.isChecked():  # fixing this is the first priority
+            minSumNum = (
+            ((self.clickPointArray[0][0] - e.x()) ** 2 + (self.clickPointArray[0][1] - e.y()) ** 2) ** 0.5, 0)
+            for n, i in enumerate(self.clickPointArray):
+                if ((i[0] - e.x()) ** 2 + (i[1] - e.y()) ** 2) ** 0.5 <= minSumNum[0]:
+                    minSumNum = (((i[0] - e.x()) ** 2 + (i[1] - e.y()) ** 2) ** 0.5, n)
+            print(minSumNum)
+            self.clickPointArray[minSumNum[1]][0], self.clickPointArray[minSumNum[1]][1] = e.x(), e.y()
+            print(self.clickPointArray[minSumNum[1]][0], self.clickPointArray[minSumNum[1]][1])
+        elif e.button() == QtCore.Qt.RightButton:  # right click draws beziers
             if len(self.clickArr) < 1:
                 self.clickPointArray.insert(len(self.clickPointArray), [e.x(), e.y(), isReverse, self.colornum])
             self.clickArr.insert(len(self.clickArr), [e.x(), e.y()])
@@ -212,10 +206,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                             [bPP[i][0], bPP[i][1], isReverse,
                                              self.colornum])  # doesn't work for 1st point of
                 # bezier, reason Unknown
-
             self.clickArr = [[e.x(), e.y()]]
 
-        # painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
         #  swap with draw_path function later
         for i in range(1, len(self.clickPointArray)):
             pen.setColor(QtGui.QColor(self.colorArr[self.clickPointArray[i][3]]))
@@ -231,6 +223,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.last_y = e.y()
 
     # Button methods
+    def draw_mirror(self, mirrorType, labelWidth=width, labelHeight=height):
+        painter = QtGui.QPainter(self.label2.pixmap())
+        pen = QtGui.QPen()
+
+        pen.setColor(QtGui.QColor("cyan"))
+        pen.setWidth(5)
+        painter.setPen(pen)
+
+        if mirrorType == 0:
+            painter.drawLine(int(labelWidth / 2) - 50, 0, int(labelWidth / 2) - 50, labelHeight + 50)
+        elif mirrorType == 1:
+            painter.drawLine(0, int(labelHeight / 2), labelWidth, int(labelHeight / 2))
+
+        painter.end()
+
     def mirror(self):
         self.label2.setPixmap(self.pixmap)
         self.draw_grid()
@@ -311,6 +318,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def SavePath(self):
         self.dataDict[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
 
+        # noinspection PyBroadException
         try:
             with open(self.destination, "r") as json_data:
                 dictData = json.load(json_data)
