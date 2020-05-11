@@ -178,9 +178,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for n, i in enumerate(self.clickPointArray):
                 if ((i[0] - e.x()) ** 2 + (i[1] - e.y()) ** 2) ** 0.5 <= minSumNum[0]:
                     minSumNum = (((i[0] - e.x()) ** 2 + (i[1] - e.y()) ** 2) ** 0.5, n)
-            print(minSumNum)
             self.clickPointArray[minSumNum[1]][0], self.clickPointArray[minSumNum[1]][1] = e.x(), e.y()
-            print(self.clickPointArray[minSumNum[1]][0], self.clickPointArray[minSumNum[1]][1])
         elif e.button() == QtCore.Qt.RightButton:  # right click draws beziers
             if len(self.clickArr) < 1:
                 self.clickPointArray.insert(len(self.clickPointArray), [e.x(), e.y(), isReverse, self.colornum])
