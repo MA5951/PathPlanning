@@ -4,6 +4,7 @@
 # 2: display grid on screen
 # 3: draw lines between points by click order
 # 4: save line coordinates in meters
+import clipboard
 import copy
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -312,6 +313,8 @@ class MainWindow(QtWidgets.QMainWindow):
             print(line)
         print("\n")
         #  print(self.clickPointArray)
+
+        clipboard.copy('\n'.join(lines))
 
     def SavePath(self):
         self.dataDict[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
