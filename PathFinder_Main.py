@@ -1,10 +1,18 @@
 # features:
 #
-# 1: display image on screen
+# 1: display selected image on screen
 # 2: display grid on screen
-# 3: draw lines between points by click order
+# 3: draw lines between points by pressing left click
+# 4: draw segmented (using the bezier function) by pressing right click
 # 4: save line coordinates in meters
-import clipboard
+# 5: mirror path in horizontal or vertical orientation
+# 6: save and load path by name
+# 7: divide path into color coded segments
+# 8: change position of selected point
+# 9: clear path from screen
+# 10: delete last point from path
+# draw
+import pyperclip
 import copy
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -85,42 +93,42 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nextPathB.move(self.btnPosX, 125)
         self.nextPathB.clicked.connect(self.NewPath)
 
-        saveCurrentPath = QPushButton('Save this path', self.label1)
-        saveCurrentPath.setStyleSheet("background-color: light gray")
-        saveCurrentPath.resize(self.btnWidth + 4, self.btnHeight - 25)
-        saveCurrentPath.move(self.btnPosX - 2, 175)
-        saveCurrentPath.clicked.connect(self.SavePath)
-
         self.PathNameText = QTextEdit(self.label1)  # 'Save this path' and 'draw this path' textbox configuration
         self.PathNameText.setFixedSize(QSize(75, 50))
         self.PathNameText.setLineWrapMode(True)
         self.PathNameText.move(self.btnPosX, 200)
 
-        drawPath = QPushButton('Draw this path', self.label1)
+        saveCurrentPath = QPushButton('Save this path', self.label1)  # button to save path by written name
+        saveCurrentPath.setStyleSheet("background-color: light gray")
+        saveCurrentPath.resize(self.btnWidth + 4, self.btnHeight - 25)
+        saveCurrentPath.move(self.btnPosX - 2, 175)
+        saveCurrentPath.clicked.connect(self.SavePath)
+
+        drawPath = QPushButton('Draw this path', self.label1)  # button to draw path selected by name
         drawPath.setStyleSheet("background-color: light gray")
         drawPath.resize(self.btnWidth + 4, self.btnHeight - 25)
         drawPath.move(self.btnPosX - 2, 250)
         drawPath.clicked.connect(self.DrawPath)
 
-        self.mirrorBtn = QPushButton('Mirror', self.label1)
+        self.mirrorBtn = QPushButton('Mirror', self.label1)  # button to change the orientation of the mirror
         self.mirrorBtn.setStyleSheet("background-color: light gray")
         self.mirrorBtn.resize(self.btnWidth, self.btnHeight)
         self.mirrorBtn.move(self.btnPosX, 275)
         self.mirrorBtn.clicked.connect(self.mirror)
 
-        self.mirrorAllBtn = QPushButton('Mirror All', self.label1)
+        self.mirrorAllBtn = QPushButton('Mirror All', self.label1)  # button to mirror the whole path.
         self.mirrorAllBtn.setStyleSheet("background-color: light gray")
         self.mirrorAllBtn.resize(self.btnWidth, self.btnHeight)
         self.mirrorAllBtn.move(self.btnPosX, 325)
         self.mirrorAllBtn.clicked.connect(self.mirrorAll)
 
-        self.clearBtn = QPushButton('Clear', self.label1)
+        self.clearBtn = QPushButton('Clear', self.label1)  # button to clear the entire path
         self.clearBtn.setStyleSheet("background-color: light gray")
         self.clearBtn.resize(self.btnWidth, self.btnHeight)
         self.clearBtn.move(self.btnPosX, 375)
         self.clearBtn.clicked.connect(self.clear)
 
-        self.dragPointBtn = QCheckBox('Move Point', self.label1)
+        self.dragPointBtn = QCheckBox('Move Point', self.label1)  # button to move closest point to click
         self.dragPointBtn.resize(self.btnWidth, self.btnHeight)
         self.dragPointBtn.move(self.btnPosX, 410)
 
@@ -173,7 +181,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pen.setWidth(5)
         painter = QtGui.QPainter(self.label2.pixmap())
         painter.setPen(pen)
-        if self.dragPointBtn.isChecked():  # fixing this is the first priority
+        if self.dragPointBtn.isChecked():
             minSumNum = (
             ((self.clickPointArray[0][0] - e.x()) ** 2 + (self.clickPointArray[0][1] - e.y()) ** 2) ** 0.5, 0)
             for n, i in enumerate(self.clickPointArray):
@@ -314,7 +322,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print("\n")
         #  print(self.clickPointArray)
 
-        clipboard.copy('\n'.join(lines))
+        pyperclip.copy('\n'.join(lines))
 
     def SavePath(self):
         self.dataDict[self.PathNameText.toPlainText()] = self.clickPointArray.copy()
