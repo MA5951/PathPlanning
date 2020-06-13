@@ -12,7 +12,7 @@
 # 9: clear path from screen
 # 10: delete last point from path
 # draw
-import pyperclip
+from venv.Lib import pyperclip
 import copy
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
